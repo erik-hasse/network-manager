@@ -1,3 +1,4 @@
+import asyncio
 import os
 import subprocess
 import decky
@@ -24,22 +25,24 @@ def nmcli(*commands: str, fields: list[str] | None = None) -> str:
     return text
 
 
-def restart_connection(connection_name: str) -> None:
+async def restart_connection(connection_name: str) -> None:
     nmcli("connection", "down", connection_name)
     # Retry the following up to 3 times:
     for i in range(3):
         try:
             nmcli("connection", "up", connection_name)
+            decky.logger.info(f"Connection {connection_name} restarted.")
             return
         except RuntimeError as e:
             decky.logger.error(f"Error restarting connection: {str(e)}")
+            await asyncio.sleep(2 ** i)
             if i == 2:
                 raise e
 
 
-def set_bssid_for_connection(connection_name: str, bssid: str | None) -> None:
+async def set_bssid_for_connection(connection_name: str, bssid: str | None) -> None:
     nmcli("connection", "modify", connection_name, "802-11-wireless.bssid", bssid or "")
-    restart_connection(connection_name)
+    await restart_connection(connection_name)
 
 
 def get_current_ssid() -> str | None:
@@ -82,18 +85,15 @@ def get_connection_name() -> str | None:
     return None
 
 
-def set_bssid(bssid: str | None) -> None:
+async def set_bssid(bssid: str | None) -> None:
     connection_name = get_connection_name()
     if not connection_name:
         raise RuntimeError("No active wireless connection found.")
     decky.logger.info(f"Active wireless connection: {connection_name}")
 
     # Set the BSSID
-    set_bssid_for_connection(connection_name, bssid)
+    await set_bssid_for_connection(connection_name, bssid)
     decky.logger.info(f"Set BSSID to {bssid} for connection {connection_name}")
-
-    restart_connection(connection_name)
-    decky.logger.info(f"Connection {connection_name} restarted successfully.")
 
 
 def get_current_bssid() -> str | None:
@@ -137,7 +137,7 @@ class Plugin:
     # Method to set a specific BSSID
     async def set_bssid(self, bssid: str | None):
         try:
-            set_bssid(bssid)
+            await set_bssid(bssid)
             return {'success': True}
         except Exception as e:
             decky.logger.error(f"Error in set_bssid: {str(e)}")
