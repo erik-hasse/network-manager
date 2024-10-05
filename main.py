@@ -26,7 +26,15 @@ def nmcli(*commands: str, fields: list[str] | None = None) -> str:
 
 def restart_connection(connection_name: str) -> None:
     nmcli("connection", "down", connection_name)
-    nmcli("connection", "up", connection_name)
+    # Retry the following up to 3 times:
+    for i in range(3):
+        try:
+            nmcli("connection", "up", connection_name)
+            return
+        except RuntimeError as e:
+            decky.logger.error(f"Error restarting connection: {str(e)}")
+            if i == 2:
+                raise e
 
 
 def set_bssid_for_connection(connection_name: str, bssid: str | None) -> None:
@@ -99,7 +107,7 @@ def get_current_bssid() -> str | None:
     parts = bssid.split(":", maxsplit=1)
     if len(parts) != 2:
         return None
-    return parts[1].strip()
+    return parts[1].strip() or None
 
 
 class Plugin:

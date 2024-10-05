@@ -1,30 +1,26 @@
 import {
-  ButtonItem,
-  Menu,
-  MenuItem,
   PanelSection,
   PanelSectionRow,
-  showContextMenu,
   staticClasses,
 } from "@decky/ui";
 import { FunctionComponent, useState, useEffect, useCallback } from "react";
-import { FaWifi, FaSignal } from "react-icons/fa";
-import { callable, definePlugin, toaster } from "@decky/api";
+import { FaWifi, FaSignal, FaCheck } from "react-icons/fa";
+import { callable, definePlugin } from "@decky/api";
 
-// Define the callable APIs with proper type annotations
-const scanBssids = callable<[], { success: boolean; bssids?: BssidInfo[]; error?: string }>("scan_bssids");
-const setBssid = callable<[bssid: string | null], { success: boolean; error?: string }>("set_bssid");
-const getCurrentBssid = callable<[], { success: boolean; bssid?: string; error?: string }>("get_current_bssid");
-
-// Define the BssidInfo interface
 interface BssidInfo {
   bssid: string | null;
   signal?: number; // Signal strength percentage
 }
 
+// Define the callable APIs with proper type annotations
+const scanBssids = callable<[], { success: boolean; bssids?: BssidInfo[]; error?: string }>("scan_bssids");
+const setBssid = callable<[bssid: string | null], { success: boolean; error?: string }>("set_bssid");
+const getCurrentBssid = callable<[], { success: boolean; bssid?: string | null; error?: string }>("get_current_bssid");
+
 const Content: FunctionComponent = () => {
   const [bssids, setBssids] = useState<BssidInfo[]>([]);
   const [currentBssid, setCurrentBssid] = useState<string | null>(null);
+  const [isSettingBssid, setIsSettingBssid] = useState<boolean>(false);
 
   // Fetch available BSSIDs
   const fetchBssids = useCallback(async () => {
@@ -39,48 +35,10 @@ const Content: FunctionComponent = () => {
         console.info(`Available BSSIDs: ${JSON.stringify(sortedBssids)}`);
       } else {
         console.error(result.error || "Failed to scan BSSIDs.");
-        toaster.toast({
-          title: "Error",
-          body: result.error || "Failed to scan BSSIDs.",
-          expiration: 0,
-        });
       }
     } catch (error) {
       console.error("Unexpected error scanning BSSIDs:", error);
-      toaster.toast({
-        title: "Error",
-        body: "Unexpected error scanning BSSIDs.",
-        expiration: 0,
-      });
-    }
-  }, []);
-
-  // Set BSSID
-  const handleSetBssid = useCallback(async (bssid: string | null) => {
-    try {
-      const result = await setBssid(bssid);
-      if (result.success) {
-        setCurrentBssid(bssid);
-        toaster.toast({
-          title: "BSSID Set",
-          body: "Successfully set BSSID.",
-          expiration: 0,
-        });
-      } else {
-        toaster.toast({
-          title: "Error",
-          body: result.error || "Failed to set BSSID.",
-          expiration: 0,
-        });
-        console.error(`Error setting BSSID: ${result.error}`);
-      }
-    } catch (error) {
-      console.error("Unexpected error setting BSSID:", error);
-      toaster.toast({
-        title: "Error",
-        body: "Unexpected error setting BSSID.",
-        expiration: 0,
-      });
+    } finally {
     }
   }, []);
 
@@ -88,8 +46,9 @@ const Content: FunctionComponent = () => {
   const handleGetCurrentBssid = useCallback(async () => {
     try {
       const result = await getCurrentBssid();
-      if (result.success && result.bssid) {
-        setCurrentBssid(result.bssid);
+      if (result.success) {
+        // Explicitly handle null or undefined BSSID
+        setCurrentBssid(result.bssid ?? null);
       } else {
         console.error(result.error || "Failed to get current BSSID.");
       }
@@ -98,13 +57,38 @@ const Content: FunctionComponent = () => {
     }
   }, []);
 
-  // useEffect to fetch BSSIDs and set up a polling interval
-  useEffect(() => {
-    fetchBssids();
-    handleGetCurrentBssid();
+  // Set BSSID
+  const handleSetBssid = useCallback(async (bssid: string | null) => {
+    if (isSettingBssid) return; // Prevent multiple clicks
+    setIsSettingBssid(true);
+    try {
+      const result = await setBssid(bssid);
+      if (result.success) {
+        setCurrentBssid(bssid);
+        // Immediately fetch the current BSSID to confirm
+        await handleGetCurrentBssid();
+      } else {
+        console.error(`Error setting BSSID: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Unexpected error setting BSSID:", error);
+    } finally {
+      setIsSettingBssid(false);
+    }
+  }, [isSettingBssid, handleGetCurrentBssid]);
 
-    // Set up a timer to refresh the current BSSID every 5 seconds
-    const timer = setInterval(handleGetCurrentBssid, 5000);
+  useEffect(() => {
+    const updateBssidsAndBssid = async () => {
+      await fetchBssids();
+      await handleGetCurrentBssid();
+    };
+
+    // Fetch BSSIDs immediately when the component mounts
+    updateBssidsAndBssid();
+
+    // Set up a timer to refresh the BSSIDs and current BSSID every 5 seconds
+    const timer = setInterval(updateBssidsAndBssid, 5000);
+
     return () => clearInterval(timer);
   }, [fetchBssids, handleGetCurrentBssid]);
 
@@ -118,58 +102,84 @@ const Content: FunctionComponent = () => {
   };
 
   // Helper function to build the BSSID display component
-  const buildBssidDiv = (bssidInfo: BssidInfo) => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <span>{bssidInfo.bssid || "None"}</span>
-      {typeof bssidInfo.signal === "number" && (
-        <span style={{ display: "flex", alignItems: "center", color: getSignalColor(bssidInfo.signal) }}>
-          <FaSignal style={{ marginRight: "4px" }} /> {bssidInfo.signal}%
+  const buildBssidDiv = (bssidInfo: BssidInfo, isSelected: boolean) => (
+      <div
+          role="button"
+          aria-selected={isSelected}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            padding: "8px 12px",
+            boxSizing: "border-box", // Ensure padding is considered in width calculations
+            backgroundColor: isSelected ? "#f1f3f5" : "transparent", // Subtle background for selected
+            borderRadius: "4px",
+            cursor: isSettingBssid ? "not-allowed" : "pointer",
+            opacity: isSettingBssid ? 0.6 : 1, // Reduce opacity if setting BSSID
+            transition: "background-color 0.3s, opacity 0.3s",
+          }}
+          onClick={() => {
+            if (!isSettingBssid) handleSetBssid(bssidInfo.bssid);
+          }}
+      >
+      <span style={{
+        display: "flex",
+        alignItems: "center",
+        flex: 1,
+        flexGrow: 1,
+        overflow: "hidden"
+      }}>
+        {isSelected &&
+            <FaCheck style={{marginRight: "8px", color: "#28a745", flexShrink: 0}}/>}
+        <span style={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        }}>
+          {bssidInfo.bssid || "None"}
         </span>
-      )}
-    </div>
+      </span>
+        <span
+            style={{
+              display: "flex",
+              flex: 1,
+              alignItems: "center",
+              color: bssidInfo.signal !== undefined ? getSignalColor(bssidInfo.signal) : "#6c757d",
+              whiteSpace: "nowrap", // Prevent text from wrapping
+              flexGrow: 0,
+              marginLeft: "auto",
+            }}
+        >
+        {bssidInfo.signal !== undefined && <FaSignal style={{marginRight: "4px"}}/>}
+          {bssidInfo.signal !== undefined ? `${bssidInfo.signal}%` : ""}
+      </span>
+      </div>
   );
 
-  // Find the currently selected BSSID information
-  const foundBssid = bssids.find((bssidInfo) => bssidInfo.bssid === currentBssid) || { bssid: currentBssid };
+
+  // Prepare the full list of BSSIDs including the "None" option
+  const fullBssidList: BssidInfo[] = [
+    ...bssids,
+    {bssid: null, signal: undefined}, // Represents "None"
+  ];
 
   return (
-    <PanelSection title="BSSID">
-      {/* Button to open the BSSID selection context menu */}
-      <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={(e) =>
-            showContextMenu(
-              <Menu label="Available BSSIDs" cancelText="Cancel">
-                {bssids.map((bssidInfo) => (
-                  <MenuItem
-                    key={bssidInfo.bssid ?? "none"}
-                    onSelected={() => handleSetBssid(bssidInfo.bssid)}
-                  >
-                    {buildBssidDiv(bssidInfo)}
-                  </MenuItem>
-                ))}
-                <MenuItem key="None" onSelected={() => handleSetBssid(null)}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span>None</span>
-                  </div>
-                </MenuItem>
-              </Menu>,
-              e.currentTarget ?? window
-            )
-          }
-        >
-          Change BSSID
-        </ButtonItem>
-      </PanelSectionRow>
+      <PanelSection title="Force an access point">
+          {/* Display the list of BSSIDs with selection capability */}
+          <div style={{width: "100%"}}>
+            {fullBssidList.map((bssidInfo) => {
+            const isSelected =
+              (bssidInfo.bssid === null && currentBssid === null) ||
+              (bssidInfo.bssid !== null && bssidInfo.bssid === currentBssid);
 
-      {/* Display the currently selected BSSID */}
-      <PanelSectionRow>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-          <div style={{ fontSize: "smaller", textAlign: "left" }}>Current BSSID</div>
-          {buildBssidDiv(foundBssid)}
+            return (
+              <PanelSectionRow key={bssidInfo.bssid ?? "none"}>
+                {buildBssidDiv(bssidInfo, isSelected)}
+              </PanelSectionRow>
+            );
+          })}
         </div>
-      </PanelSectionRow>
     </PanelSection>
   );
 };
