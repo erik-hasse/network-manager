@@ -134,15 +134,6 @@ class Plugin:
             decky.logger.error(f"Error in scan_bssids: {str(e)}")
             return {'success': False, 'error': str(e)}
 
-    # Method to set a specific BSSID
-    async def set_bssid(self, bssid: str | None):
-        try:
-            await set_bssid(bssid)
-            return {'success': True}
-        except Exception as e:
-            decky.logger.error(f"Error in set_bssid: {str(e)}")
-            return {'success': False, 'error': str(e)}
-
     async def get_current_bssid(self):
         try:
             bssid = get_current_bssid()
