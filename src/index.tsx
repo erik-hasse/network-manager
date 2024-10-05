@@ -5,7 +5,6 @@ import {callable, definePlugin} from "@decky/api";
 import {BssidInfo} from "./types";
 import {BssidRow} from "./BssidRow";
 
-// Define the callable APIs with proper type annotations
 const scanBssids = callable<[], { success: boolean; bssids?: BssidInfo[]; error?: string }>("scan_bssids");
 const setBssid = callable<[bssid: string | null], { success: boolean; error?: string }>("set_bssid");
 const getCurrentBssid = callable<[], { success: boolean; bssid?: string | null; error?: string }>("get_current_bssid");
@@ -14,21 +13,19 @@ const Content: FunctionComponent = () => {
   const [bssids, setBssids] = useState<BssidInfo[]>([]);
   const [currentBssid, setCurrentBssid] = useState<string | null>(null);
   const [isSettingBssid, setIsSettingBssid] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch available BSSIDs
   const fetchBssids = useCallback(async () => {
     try {
       const result = await scanBssids();
       if (result.success && result.bssids) {
-        // Sort BSSIDs by signal strength, handling undefined signals
         const sortedBssids = [...result.bssids].sort(
           (a, b) => (b.signal ?? 0) - (a.signal ?? 0)
         );
 
-        // Check if currentBssid is not in the scanned list
         if (currentBssid && !sortedBssids.some(bssid => bssid.bssid === currentBssid)) {
-          // Add the current BSSID with undefined signal strength
-          sortedBssids.unshift({ bssid: currentBssid, signal: undefined });
+          sortedBssids.unshift({ bssid: currentBssid });
         }
 
         setBssids(sortedBssids);
@@ -38,17 +35,14 @@ const Content: FunctionComponent = () => {
       }
     } catch (error) {
       console.error("Unexpected error scanning BSSIDs:", error);
-    } finally {
     }
   }, [currentBssid]);
-
 
   // Get the current BSSID
   const handleGetCurrentBssid = useCallback(async () => {
     try {
       const result = await getCurrentBssid();
       if (result.success) {
-        // Explicitly handle null or undefined BSSID
         setCurrentBssid(result.bssid ?? null);
       } else {
         console.error(result.error || "Failed to get current BSSID.");
@@ -60,13 +54,14 @@ const Content: FunctionComponent = () => {
 
   // Set BSSID
   const handleSetBssid = useCallback(async (bssid: string | null) => {
-    if (isSettingBssid) return; // Prevent multiple clicks
+    if (isSettingBssid) return;  // Prevent multiple clicks
+    if (bssid === currentBssid) return; // Skip if already selected
     setIsSettingBssid(true);
     try {
       const result = await setBssid(bssid);
       if (result.success) {
         setCurrentBssid(bssid);
-        // Immediately fetch the current BSSID to confirm
+        // Fetch the current BSSID again to ensure it's updated
         await handleGetCurrentBssid();
       } else {
         console.error(`Error setting BSSID: ${result.error}`);
@@ -76,38 +71,34 @@ const Content: FunctionComponent = () => {
     } finally {
       setIsSettingBssid(false);
     }
-  }, [isSettingBssid, handleGetCurrentBssid]);
+  }, [isSettingBssid, currentBssid, handleGetCurrentBssid]);
 
   useEffect(() => {
     const updateBssidsAndBssid = async () => {
-      await fetchBssids();
       await handleGetCurrentBssid();
+      await fetchBssids();
+      setLoading(false);
     };
 
-    // Fetch BSSIDs immediately when the component mounts
     updateBssidsAndBssid();
-
-    // Set up a timer to refresh the BSSIDs and current BSSID every 5 seconds
     const timer = setInterval(updateBssidsAndBssid, 5000);
-
     return () => clearInterval(timer);
   }, [fetchBssids, handleGetCurrentBssid]);
-
 
   // Prepare the full list of BSSIDs including the "None" option
   const fullBssidList: BssidInfo[] = [
     ...bssids,
-    {bssid: null, signal: undefined}, // Represents "None"
+    { bssid: null, signal: undefined }, // Represents "None"
   ];
 
   return (
-      <PanelSection title="Force an access point">
-          {/* Display the list of BSSIDs with selection capability */}
-          <div style={{width: "100%"}}>
-            {fullBssidList.map((bssidInfo) => {
-            const isSelected =
-              (bssidInfo.bssid === null && currentBssid === null) ||
-              (bssidInfo.bssid !== null && bssidInfo.bssid === currentBssid);
+    <PanelSection title="Force an access point">
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div style={{ width: "100%" }}>
+          {fullBssidList.map((bssidInfo) => {
+            const isSelected = bssidInfo.bssid === currentBssid;
 
             return (
               <PanelSectionRow key={bssidInfo.bssid ?? "none"}>
@@ -121,11 +112,11 @@ const Content: FunctionComponent = () => {
             );
           })}
         </div>
+      )}
     </PanelSection>
   );
 };
 
-// Define and export the plugin
 export default definePlugin(() => ({
   name: "Network Manager",
   titleView: <div className={staticClasses.Title} style={{ fontSize: '0.9em', padding: '5px', margin: '5px' }}>

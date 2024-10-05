@@ -26,8 +26,8 @@ export const BssidRow: React.FC<BssidProps> = ({
       justifyContent: "space-between",
       width: "100%",
       padding: "8px 12px",
-      boxSizing: "border-box", // Ensure padding is considered in width calculations
-      backgroundColor: isSelected ? "#f1f3f5" : "transparent", // Subtle background for selected
+      boxSizing: "border-box", // Without this the right side gets cut off
+      backgroundColor: isSelected ? "#f1f3f5" : "transparent",
       borderRadius: "4px",
       cursor: isSettingBssid ? "not-allowed" : "pointer",
       opacity: isSettingBssid ? 0.6 : 1, // Reduce opacity if setting BSSID
@@ -65,7 +65,7 @@ export const BssidRow: React.FC<BssidProps> = ({
         flex: 1,
         alignItems: "center",
         color: bssidInfo.signal !== undefined ? getSignalColor(bssidInfo.signal) : "#6c757d",
-        whiteSpace: "nowrap", // Prevent text from wrapping
+        whiteSpace: "nowrap",
         flexGrow: 0,
         marginLeft: "auto",
       }}
