@@ -1,11 +1,11 @@
 {
   "name": "Network Manager",
   "author": "Erik Hasse",
-  "flags": ["debug", "root"],
+  "flags": ["root"],
   "api_version": 1,
   "publish": {
-    "tags": ["template", "root"],
-    "description": "Advanced Network Manager.",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "tags": ["network", "settings", "root"],
+    "description": "Select a specific mesh network access point without going to Desktop Mode",
+    "image": "https://raw.githubusercontent.com/erik-hasse/network-manager/refs/heads/main/screenshot.jpg"
   }
 }

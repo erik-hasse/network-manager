@@ -56,7 +56,7 @@ export const BssidRow: React.FC<BssidProps> = ({
           textOverflow: "ellipsis",
         }}
       >
-        {bssidInfo.bssid || "None"}
+        {bssidInfo.bssid || "Automatic"}
       </span>
     </span>
     <span

@@ -85,10 +85,9 @@ const Content: FunctionComponent = () => {
     return () => clearInterval(timer);
   }, [fetchBssids, handleGetCurrentBssid]);
 
-  // Prepare the full list of BSSIDs including the "None" option
   const fullBssidList: BssidInfo[] = [
     ...bssids,
-    { bssid: null, signal: undefined }, // Represents "None"
+    { bssid: null, signal: undefined }, // Represents "Automatic"
   ];
 
   return (
