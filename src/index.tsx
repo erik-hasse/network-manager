@@ -4,7 +4,7 @@ import {
   staticClasses,
 } from "@decky/ui";
 import { FunctionComponent, useState, useEffect, useCallback } from "react";
-import { FaWifi, FaSignal, FaCheck } from "react-icons/fa";
+import { FaWifi, FaSignal, FaCheck, FaBan } from "react-icons/fa";
 import { callable, definePlugin } from "@decky/api";
 
 interface BssidInfo {
@@ -31,6 +31,13 @@ const Content: FunctionComponent = () => {
         const sortedBssids = [...result.bssids].sort(
           (a, b) => (b.signal ?? 0) - (a.signal ?? 0)
         );
+
+        // Check if currentBssid is not in the scanned list
+        if (currentBssid && !sortedBssids.some(bssid => bssid.bssid === currentBssid)) {
+          // Add the current BSSID with undefined signal strength
+          sortedBssids.unshift({ bssid: currentBssid, signal: undefined });
+        }
+
         setBssids(sortedBssids);
         console.info(`Available BSSIDs: ${JSON.stringify(sortedBssids)}`);
       } else {
@@ -40,7 +47,8 @@ const Content: FunctionComponent = () => {
       console.error("Unexpected error scanning BSSIDs:", error);
     } finally {
     }
-  }, []);
+  }, [currentBssid]);
+
 
   // Get the current BSSID
   const handleGetCurrentBssid = useCallback(async () => {
@@ -103,26 +111,26 @@ const Content: FunctionComponent = () => {
 
   // Helper function to build the BSSID display component
   const buildBssidDiv = (bssidInfo: BssidInfo, isSelected: boolean) => (
-      <div
-          role="button"
-          aria-selected={isSelected}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-            padding: "8px 12px",
-            boxSizing: "border-box", // Ensure padding is considered in width calculations
-            backgroundColor: isSelected ? "#f1f3f5" : "transparent", // Subtle background for selected
-            borderRadius: "4px",
-            cursor: isSettingBssid ? "not-allowed" : "pointer",
-            opacity: isSettingBssid ? 0.6 : 1, // Reduce opacity if setting BSSID
-            transition: "background-color 0.3s, opacity 0.3s",
-          }}
-          onClick={() => {
-            if (!isSettingBssid) handleSetBssid(bssidInfo.bssid);
-          }}
-      >
+    <div
+        role="button"
+        aria-selected={isSelected}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          padding: "8px 12px",
+          boxSizing: "border-box", // Ensure padding is considered in width calculations
+          backgroundColor: isSelected ? "#f1f3f5" : "transparent", // Subtle background for selected
+          borderRadius: "4px",
+          cursor: isSettingBssid ? "not-allowed" : "pointer",
+          opacity: isSettingBssid ? 0.6 : 1, // Reduce opacity if setting BSSID
+          transition: "background-color 0.3s, opacity 0.3s",
+        }}
+        onClick={() => {
+          if (!isSettingBssid) handleSetBssid(bssidInfo.bssid);
+        }}
+    >
       <span style={{
         display: "flex",
         alignItems: "center",
@@ -140,22 +148,26 @@ const Content: FunctionComponent = () => {
           {bssidInfo.bssid || "None"}
         </span>
       </span>
-        <span
-            style={{
-              display: "flex",
-              flex: 1,
-              alignItems: "center",
-              color: bssidInfo.signal !== undefined ? getSignalColor(bssidInfo.signal) : "#6c757d",
-              whiteSpace: "nowrap", // Prevent text from wrapping
-              flexGrow: 0,
-              marginLeft: "auto",
-            }}
-        >
+      <span
+          style={{
+            display: "flex",
+            flex: 1,
+            alignItems: "center",
+            color: bssidInfo.signal !== undefined ? getSignalColor(bssidInfo.signal) : "#6c757d",
+            whiteSpace: "nowrap", // Prevent text from wrapping
+            flexGrow: 0,
+            marginLeft: "auto",
+          }}
+      >
         {bssidInfo.signal !== undefined && <FaSignal style={{marginRight: "4px"}}/>}
-          {bssidInfo.signal !== undefined ? `${bssidInfo.signal}%` : ""}
+        {bssidInfo.signal === undefined && bssidInfo.bssid !== null && (
+          <FaBan style={{ marginRight: "4px", color: "#6c757d" }} />
+        )}
+        {bssidInfo.signal !== undefined ? `${bssidInfo.signal}%` : ""}
       </span>
-      </div>
+    </div>
   );
+
 
 
   // Prepare the full list of BSSIDs including the "None" option
