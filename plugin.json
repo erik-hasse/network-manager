@@ -5,7 +5,7 @@
   "api_version": 1,
   "publish": {
     "tags": ["network", "settings", "root"],
-    "description": "Select a specific mesh network access point without going to Desktop Mode",
+    "description": "Select a specific mesh network access point without going to Desktop Mode. Root is required to apply network setting changes.",
     "image": "https://raw.githubusercontent.com/erik-hasse/network-manager/refs/heads/main/screenshot.jpg"
   }
 }
