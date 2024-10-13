@@ -91,28 +91,35 @@ const Content: FunctionComponent = () => {
   ];
 
   return (
-    <PanelSection title="Force an access point">
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <div style={{ width: "100%" }}>
-          {fullBssidList.map((bssidInfo) => {
-            const isSelected = bssidInfo.bssid === currentBssid;
+      <PanelSection title="Select an access point">
+        {loading ? (
+          <div>Loading...</div>
+        ) : (
+          <div style={{ width: "100%" }}>
+            {fullBssidList.map((bssidInfo, index) => {
+              const isSelected = bssidInfo.bssid === currentBssid;
 
-            return (
-              <PanelSectionRow key={bssidInfo.bssid ?? "none"}>
-                <BssidRow
-                  bssidInfo={bssidInfo}
-                  isSelected={isSelected}
-                  isSettingBssid={isSettingBssid}
-                  handleSetBssid={handleSetBssid}
-                />
-              </PanelSectionRow>
-            );
-          })}
-        </div>
-      )}
-    </PanelSection>
+              return (
+                <PanelSectionRow key={bssidInfo.bssid ?? "none"}>
+                  <BssidRow
+                    bssidInfo={bssidInfo}
+                    isSelected={isSelected}
+                    isSettingBssid={isSettingBssid}
+                    handleSetBssid={handleSetBssid}
+                    position={
+                      index === 0
+                        ? "top"
+                        : index === fullBssidList.length - 1
+                        ? "bottom"
+                        : "middle"
+                    }
+                  />
+                </PanelSectionRow>
+              );
+            })}
+          </div>
+        )}
+      </PanelSection>
   );
 };
 

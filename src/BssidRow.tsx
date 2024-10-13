@@ -1,7 +1,7 @@
 import React from "react";
-import {FaBan, FaCheck, FaSignal} from "react-icons/fa";
-import {BssidProps} from "./types";
-
+import { FaBan, FaCheck, FaSignal } from "react-icons/fa";
+import { BssidInfo, BssidProps } from "./types";
+import { DialogButton } from "@decky/ui";
 
 const getSignalColor = (signal: number): string => {
     if (signal >= 80) return "#28a745"; // Green for Excellent
@@ -11,72 +11,73 @@ const getSignalColor = (signal: number): string => {
     return "#6c757d"; // Grey for Very Weak
 };
 
+const SignalIcon: React.FC<BssidInfo> = ({ signal, bssid }) => (
+    <div
+        style={{
+            display: "flex",
+            flex: 1,
+            flexGrow: 0,
+            alignItems: "center",
+            color: signal !== undefined ? getSignalColor(signal) : "#6c757d",
+        }}
+    >
+        {signal !== undefined && (
+            <FaSignal
+                style={{
+                    marginRight: "4px",
+                    verticalAlign: "middle", // Ensures icon aligns with text
+                }}
+            />
+        )}
+        {signal === undefined && bssid !== null && (
+            <FaBan style={{ marginRight: "4px", color: "#6c757d", verticalAlign: "middle" }} />
+        )}
+        {signal !== undefined ? `${signal}%` : ""}
+    </div>
+);
+
 export const BssidRow: React.FC<BssidProps> = ({
   bssidInfo,
   isSelected,
   isSettingBssid,
   handleSetBssid,
+  position,
 }) => (
-  <div
-    role="button"
-    aria-selected={isSelected}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      width: "100%",
-      padding: "8px 12px",
-      boxSizing: "border-box", // Without this the right side gets cut off
-      backgroundColor: isSelected ? "#f1f3f5" : "transparent",
-      borderRadius: "4px",
-      cursor: isSettingBssid ? "not-allowed" : "pointer",
-      opacity: isSettingBssid ? 0.6 : 1, // Reduce opacity if setting BSSID
-      transition: "background-color 0.3s, opacity 0.3s",
-    }}
-    onClick={() => {
-      if (!isSettingBssid) handleSetBssid(bssidInfo.bssid);
-    }}
-  >
-    <span
-      style={{
-        display: "flex",
-        alignItems: "center",
-        flex: 1,
-        flexGrow: 1,
-        overflow: "hidden",
-      }}
-    >
-      {isSelected && (
-        <FaCheck style={{ marginRight: "8px", color: "#28a745", flexShrink: 0 }} />
-      )}
-      <span
-        style={{
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {bssidInfo.bssid || "Automatic"}
-      </span>
-    </span>
-    <span
-      style={{
-        display: "flex",
-        flex: 1,
-        alignItems: "center",
-        color: bssidInfo.signal !== undefined ? getSignalColor(bssidInfo.signal) : "#6c757d",
-        whiteSpace: "nowrap",
-        flexGrow: 0,
-        marginLeft: "auto",
-      }}
-    >
-      {bssidInfo.signal !== undefined && (
-        <FaSignal style={{ marginRight: "4px" }} />
-      )}
-      {bssidInfo.signal === undefined && bssidInfo.bssid !== null && (
-        <FaBan style={{ marginRight: "4px", color: "#6c757d" }} />
-      )}
-      {bssidInfo.signal !== undefined ? `${bssidInfo.signal}%` : ""}
-    </span>
-  </div>
+        <DialogButton
+            onClick={() => {if (!isSettingBssid) handleSetBssid(bssidInfo.bssid)}}
+            disabled={isSettingBssid}
+            style={{
+                display: "flex",
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingRight: "8px",
+                paddingLeft: "8px",
+                width: "100%",
+                borderRadius: position === "middle" ? 0 : position === "bottom" ? "0 0 2px 2px" : "2px 2px 0 0",
+            }}
+        >
+            <FaCheck
+                style={{
+                    marginRight: "8px",
+                    color: "#28a745",
+                    opacity: isSelected ? 1 : 0,
+                    verticalAlign: "middle", // Ensures icon aligns with text
+                }}
+            />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flex: 1,
+                whiteSpace: "nowrap", // Prevent text from wrapping
+                overflow: "hidden", // Hide overflowed text
+                textOverflow: "ellipsis", // Show ellipsis when text overflows
+                margin: 0,
+              }}
+            >
+              {bssidInfo.bssid || "Automatic"}
+            </div>
+            <SignalIcon {...bssidInfo} />
+        </DialogButton>
 );

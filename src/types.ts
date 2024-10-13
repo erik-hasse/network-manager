@@ -8,4 +8,5 @@ export interface BssidProps {
     isSelected: boolean;
     isSettingBssid: boolean;
     handleSetBssid: (bssid: string | null) => void;
+    position: "top" | "middle" | "bottom";
 }
